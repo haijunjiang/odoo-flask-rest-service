@@ -187,18 +187,24 @@ def getPlans():
 				# print("COmppp",user.company_id.name) # the name of its company
 				Plan = odoo.env['payer_directory.plan']
 				query = []
+				plan_ids = []
 				for key,value in request.args.to_dict().iteritems():
 					if key == "name":
 						query.append((key,"ilike",value))
 					elif key == "payer":
 						query.append((key,"=",int(value)))
-					
+					elif key == "payer_caqh_id":
+						Payer = odoo.env['payer_directory.payer']
+						payer_ids = Payer.search([("caqh_id","=",value)])
+						for payer in Payer.browse(payer_ids):
+							plan_ids = plan_ids + payer.plans.ids
 					elif key == "caqh_id":
 						query.append((key,"=",str(value)))
 					else:
 						query.append((key,"=",value))
 				print(query)
-				plan_ids = Plan.search(query)
+				if query:
+					plan_ids = Plan.search(query)
 				plans = []
 				# print("payer_ids",)
 				# print(payer_ids,)
@@ -284,19 +290,26 @@ def getContractors():
 				# print("COmppp",user.company_id.name) # the name of its company
 				Contractor = odoo.env['payer_directory.contractor']
 				query = []
+				contractor_ids = []
 				for key,value in request.args.to_dict().iteritems():
 					if key == "name":
 						query.append((key,"ilike",value))
 					elif key == "payer":
 						query.append((key,"=",int(value)))
+					elif key == "payer_caqh_id":
+						Payer = odoo.env['payer_directory.payer']
+						payer_ids = Payer.search([("caqh_id","=",value)])
+						for payer in Payer.browse(payer_ids):
+							contractor_ids = contractor_ids + payer.contractors.ids
 					else:
 						query.append((key,"=",value))
 				print(query)
-				contractor_ids = Contractor.search(query)
+				if(query):
+					contractor_ids = Contractor.search(query)
 				contractors = []
 				# print("payer_ids",)
 				# print(payer_ids,)
-				for contractor_record in Contractor.browse(contractor_ids):
+				for contractor_record in Contractor.browse(list(set(contractor_ids))):
 					contractor = {}
 					contractor["name"] = contractor_record.name
 					contractor["id"] = contractor_record.id
@@ -374,19 +387,43 @@ def getEndpoints():
 				# print("COmppp",user.company_id.name) # the name of its company
 				Endpoint = odoo.env['payer_directory.endpoint']
 				query = []
+				endpoint_ids = []
 				for key,value in request.args.to_dict().iteritems():
 					if key == "name":
 						query.append((key,"ilike",value))
-					elif key == "payer":
+					elif key in ["payer","purpose"]:
 						query.append((key,"=",int(value)))
+					elif key == "payer_caqh_id":
+						Payer = odoo.env['payer_directory.payer']
+						payer_ids = Payer.search([("caqh_id","=",value)])
+						for payer in Payer.browse(payer_ids):
+							endpoint_ids = endpoint_ids + payer.endpoints.ids
+					elif key == "plan_caqh_id":
+						Plan = odoo.env['payer_directory.plan']
+						plan_ids = Plan.search([("caqh_id","=",value)])
+						print("Plan ids",plan_ids)
+						for plan in Plan.browse(plan_ids):
+							endpoint_ids = endpoint_ids + plan.endpoints.ids
+					elif key == "plan":
+						Plan = odoo.env['payer_directory.plan']
+						plan_ids = Plan.search([("id","=",int(value))])
+						for plan in Plan.browse(plan_ids):
+							endpoint_ids = endpoint_ids + plan.endpoints.ids
+					elif key == "purpose_code":
+						Purpose = odoo.env['payer_directory.endpoint.purpose']
+						purpose_ids = Purpose.search([("code","=",value)])
+						query.append(("purpose","in",purpose_ids))
+
 					else:
 						query.append((key,"=",value))
-				print(query)
-				endpoint_ids = Endpoint.search(query)
+						endpoint_ids = Endpoint.search(query)
+				print(query,endpoint_ids)
+				if(query):
+					endpoint_ids =endpoint_ids +  Endpoint.search(query)
 				endpoints = []
 				# print("payer_ids",)
 				# print(payer_ids,)
-				for endpoint_record in Endpoint.browse(endpoint_ids):
+				for endpoint_record in Endpoint.browse(list(set(endpoint_ids))):
 					endpoint = get_endpoint(endpoint_record)
 					
 					endpoints.append(endpoint)
