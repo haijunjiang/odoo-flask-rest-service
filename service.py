@@ -6,10 +6,8 @@ from flask import request,abort
 from base64 import b64decode, b64encode
 
 
-
-
-
 app = Flask(__name__)
+odoo = odoorpc.ODOO('localhost', port=8069)
 # auth = HTTPBasicAuth()
 
 
@@ -22,34 +20,35 @@ app = Flask(__name__)
 # def hello():
 #     return "Root URL"
 
-
 # @auth.login_required
 @app.route("/api/payers")
 def getPayers():
-	
 	auth_header = request.headers.get('Authorization')
-	print auth_header
+	print("Argss:",request.args.to_dict())
 	if auth_header:
-		print "ss"
 		decode_res = decode(auth_header)
-		print("decode res",decode_res)
 		if "username" not in decode_res:
 			return decode_res
 		if decode_res["username"] and decode_res['password']:
-			print(decode_res["username"] , decode_res['password'])
-			odoo = odoorpc.ODOO('localhost', port=8069)
+			# print(decode_res["username"] , decode_res['password'])
+			
 			# Check available databases
-			print(odoo.db.list())
+			# print(odoo.db.list())
 			# Login
 			try:
 				odoo.login('fhir', decode_res["username"], decode_res['password'])
-			
 				# Current user
 				user = odoo.env.user
 				# print("User",user.name)            # name of the user connected
 				# print("COmppp",user.company_id.name) # the name of its company
 				Payer = odoo.env['payer_directory.payer']
-				payer_ids = Payer.search([])
+				query = []
+				for key,value in request.args.to_dict().iteritems():
+					if key == "name":
+						query.append((key,"ilike",value))
+					else:
+						query.append((key,"=",value))
+				payer_ids = Payer.search(query)
 				payers = []
 				# print("payer_ids",)
 				# print(payer_ids,)
@@ -58,34 +57,85 @@ def getPayers():
 					payer ={}
 					payer['id']= payer_record.id
 					payer['name']= payer_record.name
+			    		payers.append(payer)
+				# Simple 'raw' query
+				# payers = payer_ids
+				# print(payers)
+			except Exception,e:
+				print("Error!",str(e))
+				if(str(e).lower().find("access") > -1):
+					return jsonify({"Error":"Access Denied"}),403
+				else:
+					abort(500)
+				
+		else:
+			return jsonify({"Error":"Invalid Credentials"}),403
+	else:
+		return jsonify({"Error":"Invalid Authorization Header"}),403
+
+	return jsonify({'payers': payers})
+
+# @auth.login_required
+@app.route("/api/payer/<int:payer_id>")
+def getPayerById(payer_id):
+	auth_header = request.headers.get('Authorization')
+	if auth_header:
+		decode_res = decode(auth_header)
+		if "username" not in decode_res:
+			return decode_res
+		if decode_res["username"] and decode_res['password']:
+			print(decode_res["username"] , decode_res['password'])
+			
+			# Check available databases
+			print(odoo.db.list())
+			# Login
+			try:
+				odoo.login('fhir', decode_res["username"], decode_res['password'])
+				# Current user
+				user = odoo.env.user
+				# print("User",user.name)            # name of the user connected
+				# print("COmppp",user.company_id.name) # the name of its company
+				Payer = odoo.env['payer_directory.payer']
+				payer_ids = Payer.search([("id","=",payer_id)])
+				# print payer_ids
+				payers = []
+				print("payer_ids",)
+				print(payer_ids,)
+				if(not payer_ids):
+					return jsonify({"Error":"Payer with given id not Found"}),404
+				for payer_record in Payer.browse(payer_ids):
+					print "payer_record",payer_record
+					payer ={}
+					payer['id']= payer_record.id
+					payer['name']= payer_record.name
+					payer['caqh_id']= payer_record.caqh_id
+					payer["address"] = {
+						
+					}
+			
+					if(payer_record.street):
+						payer["address"]["street"] =payer_record.street
+					if(payer_record.street2):
+						payer["address"]["street2"] =payer_record.street2
+					if(payer_record.zip):
+						payer["address"]["zip"] =payer_record.zip
+					if(payer_record.city):
+						payer["address"]["city"] =payer_record.city
+					if(payer_record.state_id):
+						payer["address"]["state"] =payer_record.state_id.name
+					if(payer_record.country_id):
+						payer["address"]["country"] =payer_record.country_id.name
+
 					endpoints = []
 					print(payer_record,payer_record.endpoints)
 					for endpoint_record in payer_record.endpoints:
 						print( "---",endpoint_record)
-						endpoint = {}
-						endpoint['name'] = endpoint_record.name
-						endpoint['authorize'] = endpoint_record.authorize
-						endpoint['url'] = endpoint_record.url
-						endpoint['auth_url'] = endpoint_record.auth_url
-						endpoint['purpose'] = endpoint_record.purpose.name
-						endpoint['type_of_auth'] = endpoint_record.type_of_auth
+						endpoint = get_endpoint(endpoint_record)
 						endpoints.append(endpoint)
 					payer["endpoints"] = endpoints
 					plans = []
 					for plan_record in payer_record.plans:
-						plan = {}
-						plan["name"] = plan_record.name
-						plan_endpoints = []
-						for endpoint_record in plan_record.endpoints:
-							endpoint = {}
-			    			endpoint['name'] = endpoint_record.name
-			    			endpoint['authorize'] = endpoint_record.authorize
-			    			endpoint['url'] = endpoint_record.url
-			    			endpoint['auth_url'] = endpoint_record.auth_url
-			    			endpoint['purpose'] = endpoint_record.purpose.name
-			    			endpoint['type_of_auth'] = endpoint_record.type_of_auth
-			    			plan_endpoints.append(endpoint)
-			    			plan["endpoints"] = plan_endpoints
+						plan = get_plan(plan_record)
 			    			plans.append(plan)
 			    		payer['plans'] = plans
 			    		contractors = []
@@ -96,10 +146,199 @@ def getPayers():
 
 			    		payer["contractors"] = contractors
 			    		print("Payer:",payer)
-			    		payers.append(payer)
+			    		return jsonify(payer),200
+			    		# payers.append(payer)
 				# Simple 'raw' query
 				# payers = payer_ids
-				print(payers)
+				# print(payers)
+			except Exception,e:
+				print("Error!",str(e))
+				if(str(e).lower().find("access") > -1):
+					return jsonify({"Error":"Access Denied"}),403
+				else:
+					abort(500)
+				
+		else:
+			return jsonify({"Error":"Invalid Credentials"}),403
+	else:
+		return jsonify({"Error":"Invalid Authorization Header"}),403
+
+	return jsonify({'payers': payers}),200
+
+# @auth.login_required
+@app.route("/api/plans")
+def getPlans():
+	auth_header = request.headers.get('Authorization')
+	if auth_header:
+		decode_res = decode(auth_header)
+		if "username" not in decode_res:
+			return decode_res
+		if decode_res["username"] and decode_res['password']:
+			print(decode_res["username"] , decode_res['password'])
+			
+			# Check available databases
+			print(odoo.db.list())
+			# Login
+			try:
+				odoo.login('fhir', decode_res["username"], decode_res['password'])
+				# Current user
+				user = odoo.env.user
+				# print("User",user.name)            # name of the user connected
+				# print("COmppp",user.company_id.name) # the name of its company
+				Plan = odoo.env['payer_directory.plan']
+				query = []
+				for key,value in request.args.to_dict().iteritems():
+					if key == "name":
+						query.append((key,"ilike",value))
+					elif key == "payer":
+						query.append((key,"=",int(value)))
+					
+					elif key == "caqh_id":
+						query.append((key,"=",str(value)))
+					else:
+						query.append((key,"=",value))
+				print(query)
+				plan_ids = Plan.search(query)
+				plans = []
+				# print("payer_ids",)
+				# print(payer_ids,)
+				for plan_record in Plan.browse(plan_ids):
+					plan = {}
+					plan["name"] = plan_record.name
+					plan["id"] = plan_record.id
+					plans.append(plan)
+				# Simple 'raw' query
+				# payers = payer_ids
+				print(plans)
+			except Exception,e:
+				print("Error!",str(e))
+				if(str(e).lower().find("access") > -1):
+					return jsonify({"Error":"Access Denied"}),403
+				else:
+					abort(500)
+				
+		else:
+			return jsonify({"Error":"Invalid Credentials"}),403
+	else:
+		return jsonify({"Error":"Invalid Authorization Header"}),403
+
+	return jsonify({'plans': plans})
+
+# @auth.login_required
+@app.route("/api/plan/<int:plan_id>")
+def getPlanById(plan_id):
+	auth_header = request.headers.get('Authorization')
+	if auth_header:
+		decode_res = decode(auth_header)
+		if "username" not in decode_res:
+			return decode_res
+		if decode_res["username"] and decode_res['password']:
+
+			try:
+				odoo.login('fhir', decode_res["username"], decode_res['password'])
+				user = odoo.env.user
+
+				Plan = odoo.env['payer_directory.plan']
+				plan_ids = Plan.search([("id","=",plan_id)])
+				if(not plan_ids):
+					return jsonify({"Error":"Plan with given id not Found"}),404
+				plans = []
+
+				for plan_record in Plan.browse(plan_ids):
+					plan = get_plan(plan_record)
+		    		return jsonify(plan),200
+				print(plans)
+			except Exception,e:
+				print("Error!",str(e))
+				if(str(e).lower().find("access") > -1):
+					return jsonify({"Error":"Access Denied"}),403
+				else:
+					abort(500)
+				
+		else:
+			return jsonify({"Error":"Invalid Credentials"}),403
+	else:
+		return jsonify({"Error":"Invalid Authorization Header"}),403
+
+	# return jsonify({'plans': plans})
+
+# @auth.login_required
+@app.route("/api/contractors")
+def getContractors():
+	auth_header = request.headers.get('Authorization')
+	if auth_header:
+		decode_res = decode(auth_header)
+		if "username" not in decode_res:
+			return decode_res
+		if decode_res["username"] and decode_res['password']:
+			print(decode_res["username"] , decode_res['password'])
+			
+			# Check available databases
+			print(odoo.db.list())
+			# Login
+			try:
+				odoo.login('fhir', decode_res["username"], decode_res['password'])
+				# Current user
+				user = odoo.env.user
+				# print("User",user.name)            # name of the user connected
+				# print("COmppp",user.company_id.name) # the name of its company
+				Contractor = odoo.env['payer_directory.contractor']
+				query = []
+				for key,value in request.args.to_dict().iteritems():
+					if key == "name":
+						query.append((key,"ilike",value))
+					elif key == "payer":
+						query.append((key,"=",int(value)))
+					else:
+						query.append((key,"=",value))
+				print(query)
+				contractor_ids = Contractor.search(query)
+				contractors = []
+				# print("payer_ids",)
+				# print(payer_ids,)
+				for contractor_record in Contractor.browse(contractor_ids):
+					contractor = {}
+					contractor["name"] = contractor_record.name
+					contractor["id"] = contractor_record.id
+					contractors.append(contractor)
+				# Simple 'raw' query
+				# payers = payer_ids
+				print(contractors)
+			except Exception,e:
+				print("Error!",str(e))
+				if(str(e).lower().find("access") > -1):
+					return jsonify({"Error":"Access Denied"}),403
+				else:
+					abort(500)
+				
+		else:
+			return jsonify({"Error":"Invalid Credentials"}),403
+	else:
+		return jsonify({"Error":"Invalid Authorization Header"}),403
+
+	return jsonify({'contractors': contractors})
+
+# @auth.login_required
+@app.route("/api/contractor/<int:contractor_id>")
+def getContractorById(contractor_id):
+	auth_header = request.headers.get('Authorization')
+	if auth_header:
+		decode_res = decode(auth_header)
+		if "username" not in decode_res:
+			return decode_res
+		if decode_res["username"] and decode_res['password']:
+
+			try:
+				odoo.login('fhir', decode_res["username"], decode_res['password'])
+				user = odoo.env.user
+				Contractor = odoo.env['payer_directory.contractor']
+				contractor_ids = Contractor.search([("id","=",contractor_id)])
+				if(not contractor_ids):
+					return jsonify({"Error":"Contractor with given id not Found"}),404
+				contractors = []
+				for contractor_record in Contractor.browse(contractor_ids):
+					contractor = get_contractor(contractor_record)
+		    		return jsonify(contractor),200
 			except Exception,e:
 				print("Error!",str(e))
 				if(str(e).lower().find("access") > -1):
@@ -113,9 +352,157 @@ def getPayers():
 		return jsonify({"Error":"Invalid Authorization Header"}),403
 
 
-	
-	return jsonify({'payers': payers})
+# @auth.login_required
+@app.route("/api/endpoints")
+def getEndpoints():
+	auth_header = request.headers.get('Authorization')
+	if auth_header:
+		decode_res = decode(auth_header)
+		if "username" not in decode_res:
+			return decode_res
+		if decode_res["username"] and decode_res['password']:
+			print(decode_res["username"] , decode_res['password'])
+			
+			# Check available databases
+			print(odoo.db.list())
+			# Login
+			try:
+				odoo.login('fhir', decode_res["username"], decode_res['password'])
+				# Current user
+				user = odoo.env.user
+				# print("User",user.name)            # name of the user connected
+				# print("COmppp",user.company_id.name) # the name of its company
+				Endpoint = odoo.env['payer_directory.endpoint']
+				query = []
+				for key,value in request.args.to_dict().iteritems():
+					if key == "name":
+						query.append((key,"ilike",value))
+					elif key == "payer":
+						query.append((key,"=",int(value)))
+					else:
+						query.append((key,"=",value))
+				print(query)
+				endpoint_ids = Endpoint.search(query)
+				endpoints = []
+				# print("payer_ids",)
+				# print(payer_ids,)
+				for endpoint_record in Endpoint.browse(endpoint_ids):
+					endpoint = get_endpoint(endpoint_record)
+					
+					endpoints.append(endpoint)
+				# Simple 'raw' query
+				# payers = payer_ids
+				print(endpoints)
+			except Exception,e:
+				print("Error!",str(e))
+				if(str(e).lower().find("access") > -1):
+					return jsonify({"Error":"Access Denied"}),403
+				else:
+					abort(500)
+				
+		else:
+			return jsonify({"Error":"Invalid Credentials"}),403
+	else:
+		return jsonify({"Error":"Invalid Authorization Header"}),403
 
+	return jsonify({'endpoints': endpoints})
+
+# @auth.login_required
+@app.route("/api/endpoint/<int:endpoint_id>")
+def getEndpointById(endpoint_id):
+	auth_header = request.headers.get('Authorization')
+	if auth_header:
+		decode_res = decode(auth_header)
+		if "username" not in decode_res:
+			return decode_res
+		if decode_res["username"] and decode_res['password']:
+
+			try:
+				odoo.login('fhir', decode_res["username"], decode_res['password'])
+				user = odoo.env.user
+				Endpoint = odoo.env['payer_directory.endpoint']
+				endpoint_ids = Endpoint.search([("id","=",endpoint_id)])
+				if(not endpoint_ids):
+					return jsonify({"Error":"Endpoint with given id not Found"}),404
+				endpoints = []
+				for endpoint_record in Endpoint.browse(endpoint_ids):
+					endpoint = get_endpoint(endpoint_record)
+		    		return jsonify(endpoint),200
+			except Exception,e:
+				print("Error!",str(e))
+				if(str(e).lower().find("access") > -1):
+					return jsonify({"Error":"Access Denied"}),403
+				else:
+					abort(500)
+				
+		else:
+			return jsonify({"Error":"Invalid Credentials"}),403
+	else:
+		return jsonify({"Error":"Invalid Authorization Header"}),403
+
+def get_plan(plan_record):
+	plan = {}
+	plan["name"] = plan_record.name
+	plan["id"] = plan_record.id
+	plan['caqh_id']= plan_record.caqh_id
+	plan_endpoints=[]
+	for endpoint_record in plan_record.endpoints:
+		endpoint = get_endpoint(endpoint_record)
+		plan_endpoints.append(endpoint)
+		plan["endpoints"] = plan_endpoints
+	return plan
+
+def get_endpoint(endpoint_record):
+	endpoint = {}
+	endpoint['id']=endpoint_record.id
+	endpoint['name'] = endpoint_record.name
+	endpoint['caqh_id']= endpoint_record.caqh_id
+	endpoint['authorize'] = endpoint_record.authorize
+	endpoint['url'] = endpoint_record.url
+	endpoint['auth_url'] = endpoint_record.auth_url
+	endpoint['purpose'] = endpoint_record.purpose.name
+	if(endpoint_record.payer):
+		endpoint['payer'] = {'name':endpoint_record.payer.name,'id':endpoint_record.payer.id}
+	endpoint['type_of_auth'] = endpoint_record.type_of_auth
+	return endpoint
+
+def get_contractor(contractor_record):
+	contractor = {}
+	contractor["name"] = contractor_record.name
+	contractor["id"] = contractor_record.id
+	contractor['caqh_id']= contractor_record.caqh_id
+	contractor["address"] = {
+		"street":contractor_record.street,
+		"street2":contractor_record.street2,
+		"zip":contractor_record.zip,
+		"city":contractor_record.city,
+		"state_id":contractor_record.state_id,
+		"country_id":contractor_record.country_id,
+	}
+	contractor["address"] = {
+		
+	}
+
+	if(contractor_record.street):
+		contractor["address"]["street"] =contractor_record.street
+	if(contractor_record.street2):
+		contractor["address"]["street2"] =contractor_record.street2
+	if(contractor_record.zip):
+		contractor["address"]["zip"] =contractor_record.zip
+	if(contractor_record.city):
+		contractor["address"]["city"] =contractor_record.city
+	if(contractor_record.state_id):
+		contractor["address"]["state"] =contractor_record.state_id.name
+	if(contractor_record.country_id):
+		contractor["address"]["country"] =contractor_record.country_id.name
+	contractor_endpoints=[]
+	for endpoint_record in contractor_record.endpoints:
+		endpoint = get_endpoint(endpoint_record)
+		contractor_endpoints.append(endpoint)
+		contractor["endpoints"] = contractor_endpoints
+
+
+	return contractor
 
 def decode(encoded_str):
     """Decode an encrypted HTTP basic authentication string. Returns a tuple of
