@@ -2,9 +2,9 @@ from flask import Flask
 import odoorpc
 from flask.json import jsonify
 from flask_httpauth import HTTPBasicAuth
-from flask import request,abort
+from flask import request,abort,Response
 from base64 import b64decode, b64encode
-
+import json
 
 app = Flask(__name__)
 odoo = odoorpc.ODOO('localhost', port=8069)
@@ -498,7 +498,6 @@ def getEndpoints():
 						Purpose = odoo.env['payer_directory.endpoint.purpose']
 						purpose_ids = Purpose.search([("code","=",value)])
 						query.append(("purpose","in",purpose_ids))
-
 					else:
 						query.append((key,"=",value))
 				print("QUeryyy:",query)
@@ -516,6 +515,8 @@ def getEndpoints():
 				# Simple 'raw' query
 				# payers = payer_ids
 				print(endpoints)
+				return  Response(json.dumps({'endpoints': endpoints}),headers={'Content-Type':'application/json'})
+
 			except Exception,e:
 				print("Error!",str(e))
 				if(str(e).lower().find("access") > -1):
