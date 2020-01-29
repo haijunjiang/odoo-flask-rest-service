@@ -46,6 +46,29 @@ def getPayers():
 				for key,value in request.args.to_dict().iteritems():
 					if key == "name":
 						query.append((key,"ilike",value))
+					elif key == "purpose_code":
+						res_ids = []
+						Purpose = odoo.env['payer_directory.endpoint.purpose']
+						purpose_ids =Purpose.search([("code","=",value)])
+						print("purpose_code",purpose_ids)
+						print("")
+						print("")
+						Endpoint = odoo.env['payer_directory.endpoint']
+						endpoint_ids = Endpoint.search([("purpose","in",purpose_ids)])
+						# res_ids = Contractor.search([("endpoints","in",endpoint_ids)])
+						query.append(("endpoints","in",endpoint_ids))
+					elif key == "purpose":
+						res_ids = []
+
+						Purpose = odoo.env['payer_directory.endpoint.purpose']
+						purpose_ids =Purpose.search([("id","=",int(value))])
+						print("purpose",purpose_ids)
+						Endpoint = odoo.env['payer_directory.endpoint']
+						endpoint_ids = Endpoint.search([("purpose","in",purpose_ids)])
+						# res_ids = Contractor.search([("endpoints","in",endpoint_ids)])
+						
+						query.append(("endpoints","in",endpoint_ids))
+						
 					else:
 						query.append((key,"=",value))
 				payer_ids = Payer.search(query)
@@ -57,6 +80,7 @@ def getPayers():
 					payer ={}
 					payer['id']= payer_record.id
 					payer['name']= payer_record.name
+
 			    		payers.append(payer)
 				# Simple 'raw' query
 				# payers = payer_ids
@@ -123,9 +147,15 @@ def getPayerById(payer_id):
 						payer["address"]["city"] =payer_record.city
 					if(payer_record.state_id):
 						payer["address"]["state"] =payer_record.state_id.name
-					if(payer_record.country_id):
-						payer["address"]["country"] =payer_record.country_id.name
-
+					# if(payer_record.country_id):
+					# 	payer["address"]["country"] =payer_record.country_id.name
+					payer['oid']= payer_record.oid
+					payer['caqh_id']= payer_record.caqh_id
+					if payer_record.category:
+						payer['category']={
+							"id":payer_record.category.id,
+							"name":payer_record.category.name
+						}
 					endpoints = []
 					print(payer_record,payer_record.endpoints)
 					for endpoint_record in payer_record.endpoints:
@@ -152,7 +182,7 @@ def getPayerById(payer_id):
 				# payers = payer_ids
 				# print(payers)
 			except Exception,e:
-				print("Error!",str(e))
+				print("Error -- payer!",str(e))
 				if(str(e).lower().find("access") > -1):
 					return jsonify({"Error":"Access Denied"}),403
 				else:
@@ -196,10 +226,35 @@ def getPlans():
 					elif key == "payer_caqh_id":
 						Payer = odoo.env['payer_directory.payer']
 						payer_ids = Payer.search([("caqh_id","=",value)])
+						res_ids = []
 						for payer in Payer.browse(payer_ids):
-							plan_ids = plan_ids + payer.plans.ids
+							res_ids = res_ids + payer.plans.ids
+						query.append(("id","in",res_ids))
 					elif key == "caqh_id":
 						query.append((key,"=",str(value)))
+					elif key == "purpose_code":
+						res_ids = []
+						Purpose = odoo.env['payer_directory.endpoint.purpose']
+						purpose_ids =Purpose.search([("code","=",value)])
+						print("purpose_code",purpose_ids)
+						print("")
+						print("")
+						Endpoint = odoo.env['payer_directory.endpoint']
+						endpoint_ids = Endpoint.search([("purpose","in",purpose_ids)])
+						# res_ids = Contractor.search([("endpoints","in",endpoint_ids)])
+						query.append(("endpoints","in",endpoint_ids))
+					elif key == "purpose":
+						res_ids = []
+
+						Purpose = odoo.env['payer_directory.endpoint.purpose']
+						purpose_ids =Purpose.search([("id","=",int(value))])
+						print("purpose",purpose_ids)
+						Endpoint = odoo.env['payer_directory.endpoint']
+						endpoint_ids = Endpoint.search([("purpose","in",purpose_ids)])
+						# res_ids = Contractor.search([("endpoints","in",endpoint_ids)])
+						
+						query.append(("endpoints","in",endpoint_ids))
+						
 					else:
 						query.append((key,"=",value))
 				print(query)
@@ -301,6 +356,29 @@ def getContractors():
 						payer_ids = Payer.search([("caqh_id","=",value)])
 						for payer in Payer.browse(payer_ids):
 							contractor_ids = contractor_ids + payer.contractors.ids
+					elif key == "purpose_code":
+						res_ids = []
+						Purpose = odoo.env['payer_directory.endpoint.purpose']
+						purpose_ids =Purpose.search([("code","=",value)])
+						print("purpose_code",purpose_ids)
+						print("")
+						print("")
+						Endpoint = odoo.env['payer_directory.endpoint']
+						endpoint_ids = Endpoint.search([("purpose","in",purpose_ids)])
+						# res_ids = Contractor.search([("endpoints","in",endpoint_ids)])
+						query.append(("endpoints","in",endpoint_ids))
+					elif key == "purpose":
+						res_ids = []
+
+						Purpose = odoo.env['payer_directory.endpoint.purpose']
+						purpose_ids =Purpose.search([("id","=",int(value))])
+						print("purpose",purpose_ids)
+						Endpoint = odoo.env['payer_directory.endpoint']
+						endpoint_ids = Endpoint.search([("purpose","in",purpose_ids)])
+						# res_ids = Contractor.search([("endpoints","in",endpoint_ids)])
+						
+						query.append(("endpoints","in",endpoint_ids))
+						
 					else:
 						query.append((key,"=",value))
 				print(query)
@@ -323,7 +401,6 @@ def getContractors():
 					return jsonify({"Error":"Access Denied"}),403
 				else:
 					abort(500)
-				
 		else:
 			return jsonify({"Error":"Invalid Credentials"}),403
 	else:
@@ -387,7 +464,6 @@ def getEndpoints():
 				# print("COmppp",user.company_id.name) # the name of its company
 				Endpoint = odoo.env['payer_directory.endpoint']
 				query = []
-				endpoint_ids = []
 				for key,value in request.args.to_dict().iteritems():
 					if key == "name":
 						query.append((key,"ilike",value))
@@ -396,19 +472,28 @@ def getEndpoints():
 					elif key == "payer_caqh_id":
 						Payer = odoo.env['payer_directory.payer']
 						payer_ids = Payer.search([("caqh_id","=",value)])
+						print("payer_ids",payer_ids)
+						res_ids = []
 						for payer in Payer.browse(payer_ids):
-							endpoint_ids = endpoint_ids + payer.endpoints.ids
+							print(payer.name,payer.endpoints.ids)
+							res_ids = res_ids+  payer.endpoints.ids
+						query.append(("id","in",res_ids))
+
 					elif key == "plan_caqh_id":
 						Plan = odoo.env['payer_directory.plan']
 						plan_ids = Plan.search([("caqh_id","=",value)])
 						print("Plan ids",plan_ids)
+						res_ids = []
 						for plan in Plan.browse(plan_ids):
-							endpoint_ids = endpoint_ids + plan.endpoints.ids
+							res_ids = res_ids + plan.endpoints.ids
+						query.append(("id","in",res_ids))
 					elif key == "plan":
 						Plan = odoo.env['payer_directory.plan']
 						plan_ids = Plan.search([("id","=",int(value))])
+						res_ids = []
 						for plan in Plan.browse(plan_ids):
-							endpoint_ids = endpoint_ids + plan.endpoints.ids
+							res_ids = res_ids + plan.endpoints.ids
+						query.append(("id","in",res_ids))
 					elif key == "purpose_code":
 						Purpose = odoo.env['payer_directory.endpoint.purpose']
 						purpose_ids = Purpose.search([("code","=",value)])
@@ -416,16 +501,17 @@ def getEndpoints():
 
 					else:
 						query.append((key,"=",value))
-						endpoint_ids = Endpoint.search(query)
-				print(query,endpoint_ids)
-				if(query):
-					endpoint_ids =endpoint_ids +  Endpoint.search(query)
+				print("QUeryyy:",query)
+
+				endpoint_ids = Endpoint.search(query)
 				endpoints = []
 				# print("payer_ids",)
 				# print(payer_ids,)
 				for endpoint_record in Endpoint.browse(list(set(endpoint_ids))):
-					endpoint = get_endpoint(endpoint_record)
-					
+					endpoint = {}
+					endpoint["id"] = endpoint_record.id
+					endpoint["name"] = endpoint_record.name
+
 					endpoints.append(endpoint)
 				# Simple 'raw' query
 				# payers = payer_ids
@@ -508,14 +594,9 @@ def get_contractor(contractor_record):
 	contractor["name"] = contractor_record.name
 	contractor["id"] = contractor_record.id
 	contractor['caqh_id']= contractor_record.caqh_id
-	contractor["address"] = {
-		"street":contractor_record.street,
-		"street2":contractor_record.street2,
-		"zip":contractor_record.zip,
-		"city":contractor_record.city,
-		"state_id":contractor_record.state_id,
-		"country_id":contractor_record.country_id,
-	}
+	contractor['jurisdiction']= contractor_record.jurisdiction
+	contractor['oid']= contractor_record.oid
+	
 	contractor["address"] = {
 		
 	}
@@ -530,8 +611,8 @@ def get_contractor(contractor_record):
 		contractor["address"]["city"] =contractor_record.city
 	if(contractor_record.state_id):
 		contractor["address"]["state"] =contractor_record.state_id.name
-	if(contractor_record.country_id):
-		contractor["address"]["country"] =contractor_record.country_id.name
+	# if(contractor_record.country_id):
+	# 	contractor["address"]["country"] =contractor_record.country_id.name
 	contractor_endpoints=[]
 	for endpoint_record in contractor_record.endpoints:
 		endpoint = get_endpoint(endpoint_record)
