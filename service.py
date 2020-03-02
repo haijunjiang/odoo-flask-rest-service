@@ -548,6 +548,9 @@ def addPatient():
 				user = odoo.env.user
 				PaInfo = odoo.env['epa_addons.pa_info']
 				inputs = request.json
+				if exists inputs['patient_id']:
+					inputs['name'] = inputs['patient_id']
+					del(inputs['patient_id'])
 				pa_info_id = PaInfo.create(inputs)
 
 				if (not pa_info_id):
