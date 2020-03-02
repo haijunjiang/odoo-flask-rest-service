@@ -643,7 +643,7 @@ def getPatient_ac(patient_id,app_context):
 				print("Ok")
 				if request.method == 'DELETE':
 					PaInfo.unlink(pa_info_ids)
-					return {"result":"DELETED"}
+					return jsonify({"result":"DELETED"}), 200
 				for pa_info_record in PaInfo.browse(pa_info_ids):
 					print ("Getting ",pa_info_record)
 					painfo = get_painfo(pa_info_record)
@@ -690,7 +690,7 @@ def getPatient_cri(patient_id,claim_response_id):
 				print("Ok")
 				if request.method == 'DELETE':
 					PaInfo.unlink(pa_info_ids)
-					return {"result":"DELETED"}
+					return jsonify({"result":"DELETED"}), 200
 				for pa_info_record in PaInfo.browse(pa_info_ids):
 					print ("Getting ",pa_info_record)
 					painfo = get_painfo(pa_info_record)
