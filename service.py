@@ -532,7 +532,7 @@ def getEndpoints():
 	return jsonify({'endpoints': endpoints})
 
 # @auth.login_required
-@app.route("/api/pa_info/<int:patient_id>")
+@app.route("/api/pa_info/<str:patient_id>")
 def getPatient(patient_id):
 	auth_header = request.headers.get('Authorization')
 	if auth_header:
@@ -611,7 +611,7 @@ def get_painfo(record):
 	if (record.claim_response):
 		painfo["claim_response"] = record.claim_response
 	painfo["codes"] = record.codes
-	
+
 
 def get_plan(plan_record):
 	plan = {}
