@@ -534,6 +534,7 @@ def getEndpoints():
 # @auth.login_required
 @app.route("/api/pa_info/<patient_id>")
 def getPatient(patient_id):
+	print ("In get patient")
 	auth_header = request.headers.get('Authorization')
 	if auth_header:
 		decode_res = decode(auth_header)
@@ -542,12 +543,15 @@ def getPatient(patient_id):
 		if decode_res["username"] and decode_res['password']:
 
 			try:
+				print("Trying")
 				odoo.login('fhir', decode_res["username"], decode_res['password'])
+				print("Logged in")
 				user = odoo.env.user
 				PaInfo = odoo.env['epa_addons.pa_info']
 				pa_info_ids = PaInfo.search([("name", "=", patient_id)])
+
 				if (not endpoint_ids):
-					return jsonify({"Error": "Endpoint with given id not Found"}), 404
+					return jsonify({"Error": "Patient with given id not Found"}), 404
 				pa_info_set = []
 				pa_i = {}
 				print("Ok")
