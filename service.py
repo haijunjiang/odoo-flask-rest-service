@@ -618,6 +618,100 @@ def getPatient(patient_id):
 		return jsonify({"Error": "Invalid Authorization Header"}), 403
 
 # @auth.login_required
+@app.route("/api/pa_info/<patient_id>/<app_context>",methods=['GET','DELETE'])
+def getPatient(patient_id,app_context):
+	print ("In get patient")
+	auth_header = request.headers.get('Authorization')
+	if auth_header:
+		decode_res = decode(auth_header)
+		if "username" not in decode_res:
+			return decode_res
+		if decode_res["username"] and decode_res['password']:
+
+			try:
+				print("Trying")
+				odoo.login('fhir', decode_res["username"], decode_res['password'])
+				print("Logged in")
+				user = odoo.env.user
+				PaInfo = odoo.env['epa_addons.pa_info']
+				pa_info_ids = PaInfo.search([("name", "=", str(patient_id)),("app_context", "=", str(app_context))])
+
+				if (not pa_info_ids):
+					return jsonify({"Error": "Patient with given id not Found"}), 404
+				pa_info_set = []
+				pa_i = {}
+				print("Ok")
+				if request.method == 'DELETE':
+					PaInfo.delete(pa_info_ids)
+					return {"result":"DELETED"}
+				for pa_info_record in PaInfo.browse(pa_info_ids):
+					print ("Getting ",pa_info_record)
+					painfo = get_painfo(pa_info_record)
+					pa_info_set.append(painfo)
+					print ("Record " ,painfo)
+				pa_i['result'] = pa_info_set
+				print (pa_i)
+				return jsonify(pa_i), 200
+			except Exception, e:
+				print("Error!", str(e))
+				if (str(e).lower().find("access") > -1):
+					return jsonify({"Error": "Access Denied"}), 403
+				else:
+					abort(500)
+
+		else:
+			return jsonify({"Error": "Invalid Credentials"}), 403
+	else:
+		return jsonify({"Error": "Invalid Authorization Header"}), 403
+
+# @auth.login_required
+@app.route("/api/pa_info_cri/<patient_id>/<claim_response_id>",methods=['GET','DELETE'])
+def getPatient(patient_id,claim_response_id):
+	print ("In get patient")
+	auth_header = request.headers.get('Authorization')
+	if auth_header:
+		decode_res = decode(auth_header)
+		if "username" not in decode_res:
+			return decode_res
+		if decode_res["username"] and decode_res['password']:
+
+			try:
+				print("Trying")
+				odoo.login('fhir', decode_res["username"], decode_res['password'])
+				print("Logged in")
+				user = odoo.env.user
+				PaInfo = odoo.env['epa_addons.pa_info']
+				pa_info_ids = PaInfo.search([("name", "=", str(patient_id)),("claim_response_id", "=", str(claim_response_id))])
+
+				if (not pa_info_ids):
+					return jsonify({"Error": "Patient with given id not Found"}), 404
+				pa_info_set = []
+				pa_i = {}
+				print("Ok")
+				if request.method == 'DELETE':
+					PaInfo.delete(pa_info_ids)
+					return {"result":"DELETED"}
+				for pa_info_record in PaInfo.browse(pa_info_ids):
+					print ("Getting ",pa_info_record)
+					painfo = get_painfo(pa_info_record)
+					pa_info_set.append(painfo)
+					print ("Record " ,painfo)
+				pa_i['result'] = pa_info_set
+				print (pa_i)
+				return jsonify(pa_i), 200
+			except Exception, e:
+				print("Error!", str(e))
+				if (str(e).lower().find("access") > -1):
+					return jsonify({"Error": "Access Denied"}), 403
+				else:
+					abort(500)
+
+		else:
+			return jsonify({"Error": "Invalid Credentials"}), 403
+	else:
+		return jsonify({"Error": "Invalid Authorization Header"}), 403
+
+# @auth.login_required
 @app.route("/api/endpoint/<int:endpoint_id>")
 def getEndpointById(endpoint_id):
 	auth_header = request.headers.get('Authorization')
