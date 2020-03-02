@@ -613,7 +613,7 @@ def get_painfo(record):
 	painfo["patient_id"] = record.name
 	if (record.date):
 		painfo["date"] = record.date.strftime("%m/%d/%Y")
-	painfo["date"] = record.date
+	
 	if (record.app_context):
 		painfo["app_context"] = record.app_context
 	painfo["type"] = record.type
