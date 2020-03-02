@@ -621,6 +621,7 @@ def get_painfo(record):
 	if (record.claim_response):
 		painfo["claim_response"] = record.claim_response
 	painfo["codes"] = record.codes
+	return painfo
 
 
 def get_plan(plan_record):
