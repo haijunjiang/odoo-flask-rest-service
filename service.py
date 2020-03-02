@@ -530,6 +530,45 @@ def getEndpoints():
 		return jsonify({"Error":"Invalid Authorization Header"}),403
 
 	return jsonify({'endpoints': endpoints})
+# @auth.login_required
+@app.route("/api/pa_info",methods=['POST'])
+def addPatient():
+	print ("In get patient")
+	auth_header = request.headers.get('Authorization')
+	if auth_header:
+		decode_res = decode(auth_header)
+		if "username" not in decode_res:
+			return decode_res
+		if decode_res["username"] and decode_res['password']:
+
+			try:
+				print("Trying")
+				odoo.login('fhir', decode_res["username"], decode_res['password'])
+				print("Logged in")
+				user = odoo.env.user
+				PaInfo = odoo.env['epa_addons.pa_info']
+				inputs = request.json
+				pa_info_id = PaInfo.create(inputs)
+
+				if (not pa_info_id):
+					return jsonify({"Error": "Patient could not be created"}), 404
+
+				pa_i = {}
+
+				pa_i['result'] = pa_info_id
+				print (pa_i)
+				return jsonify(pa_i), 200
+			except Exception, e:
+				print("Error!", str(e))
+				if (str(e).lower().find("access") > -1):
+					return jsonify({"Error": "Access Denied"}), 403
+				else:
+					abort(500)
+
+		else:
+			return jsonify({"Error": "Invalid Credentials"}), 403
+	else:
+		return jsonify({"Error": "Invalid Authorization Header"}), 403
 
 # @auth.login_required
 @app.route("/api/pa_info/<patient_id>")
@@ -613,7 +652,7 @@ def get_painfo(record):
 	painfo["patient_id"] = record.name
 	if (record.date):
 		painfo["date"] = record.date.strftime("%m/%d/%Y")
-	
+
 	if (record.app_context):
 		painfo["app_context"] = record.app_context
 	painfo["type"] = record.type
