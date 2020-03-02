@@ -642,7 +642,7 @@ def getPatient_ac(patient_id,app_context):
 				pa_i = {}
 				print("Ok")
 				if request.method == 'DELETE':
-					PaInfo.delete(pa_info_ids)
+					PaInfo.unlink(pa_info_ids)
 					return {"result":"DELETED"}
 				for pa_info_record in PaInfo.browse(pa_info_ids):
 					print ("Getting ",pa_info_record)
@@ -689,7 +689,7 @@ def getPatient_cri(patient_id,claim_response_id):
 				pa_i = {}
 				print("Ok")
 				if request.method == 'DELETE':
-					PaInfo.delete(pa_info_ids)
+					PaInfo.unlink(pa_info_ids)
 					return {"result":"DELETED"}
 				for pa_info_record in PaInfo.browse(pa_info_ids):
 					print ("Getting ",pa_info_record)
