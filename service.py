@@ -619,7 +619,7 @@ def getPatient(patient_id):
 
 # @auth.login_required
 @app.route("/api/pa_info/<patient_id>/<app_context>",methods=['GET','DELETE'])
-def getPatient(patient_id,app_context):
+def getPatient_ac(patient_id,app_context):
 	print ("In get patient")
 	auth_header = request.headers.get('Authorization')
 	if auth_header:
