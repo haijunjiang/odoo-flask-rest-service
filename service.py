@@ -532,6 +532,40 @@ def getEndpoints():
 	return jsonify({'endpoints': endpoints})
 
 # @auth.login_required
+@app.route("/api/pa_info/<int:patient_id>")
+def getPatient(patient_id):
+	auth_header = request.headers.get('Authorization')
+	if auth_header:
+		decode_res = decode(auth_header)
+		if "username" not in decode_res:
+			return decode_res
+		if decode_res["username"] and decode_res['password']:
+
+			try:
+				odoo.login('fhir', decode_res["username"], decode_res['password'])
+				user = odoo.env.user
+				PaInfo = odoo.env['epa_addons.pa_info']
+				pa_info_ids = PaInfo.search([("name", "=", patient_id)])
+				if (not endpoint_ids):
+					return jsonify({"Error": "Endpoint with given id not Found"}), 404
+				pa_info_set = []
+				for pa_info_record in PaInfo.browse(pa_info_ids):
+					painfo = get_painfo(pa_info_record)
+					pa_info_set.append(painfo)
+				return jsonify(pa_info_set), 200
+			except Exception, e:
+				print("Error!", str(e))
+				if (str(e).lower().find("access") > -1):
+					return jsonify({"Error": "Access Denied"}), 403
+				else:
+					abort(500)
+
+		else:
+			return jsonify({"Error": "Invalid Credentials"}), 403
+	else:
+		return jsonify({"Error": "Invalid Authorization Header"}), 403
+
+# @auth.login_required
 @app.route("/api/endpoint/<int:endpoint_id>")
 def getEndpointById(endpoint_id):
 	auth_header = request.headers.get('Authorization')
@@ -563,6 +597,21 @@ def getEndpointById(endpoint_id):
 			return jsonify({"Error":"Invalid Credentials"}),403
 	else:
 		return jsonify({"Error":"Invalid Authorization Header"}),403
+
+def get_painfo(record):
+	painfo = {}
+	painfo["patient_id"] = record.name
+	painfo["date"] = record.date
+	if (record.app_context):
+		painfo["app_context"] = record.app_context
+	painfo["type"] = record.type
+	painfo["claim_response_id"] = record.claim_response_id
+	if (record.prior_auth_ref):
+		painfo["prior_auth_ref"] = record.prior_auth_ref
+	if (record.claim_response):
+		painfo["claim_response"] = record.claim_response
+	painfo["codes"] = record.codes
+	
 
 def get_plan(plan_record):
 	plan = {}
