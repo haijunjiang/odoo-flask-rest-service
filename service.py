@@ -532,7 +532,7 @@ def getEndpoints():
 	return jsonify({'endpoints': endpoints})
 
 # @auth.login_required
-@app.route("/api/pa_info/<int:patient_id>")
+@app.route("/api/pa_info/<patient_id>")
 def getPatient(patient_id):
 	print ("In get patient")
 	auth_header = request.headers.get('Authorization')
