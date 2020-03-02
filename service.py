@@ -549,10 +549,16 @@ def getPatient(patient_id):
 				if (not endpoint_ids):
 					return jsonify({"Error": "Endpoint with given id not Found"}), 404
 				pa_info_set = []
+				pa_i = {}
+				print("Ok")
 				for pa_info_record in PaInfo.browse(pa_info_ids):
+					print ("Getting ",pa_info_record)
 					painfo = get_painfo(pa_info_record)
 					pa_info_set.append(painfo)
-				return jsonify(pa_info_set), 200
+					print ("Record " ,painfo)
+				pa_i['result'] = pa_info_set
+				print (pa_i)
+				return jsonify(pa_i), 200
 			except Exception, e:
 				print("Error!", str(e))
 				if (str(e).lower().find("access") > -1):
