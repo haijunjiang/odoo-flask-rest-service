@@ -550,7 +550,7 @@ def getPatient(patient_id):
 				PaInfo = odoo.env['epa_addons.pa_info']
 				pa_info_ids = PaInfo.search([("name", "=", str(patient_id))])
 
-				if (not endpoint_ids):
+				if (not pa_info_ids):
 					return jsonify({"Error": "Patient with given id not Found"}), 404
 				pa_info_set = []
 				pa_i = {}
