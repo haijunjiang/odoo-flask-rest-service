@@ -1,4 +1,5 @@
 from flask import Flask
+from flask_cors import CORS
 import odoorpc
 from flask.json import jsonify
 from flask_httpauth import HTTPBasicAuth
@@ -7,6 +8,7 @@ from base64 import b64decode, b64encode
 import json
 
 app = Flask(__name__)
+CORS(app)
 odoo = odoorpc.ODOO('localhost', port=8069)
 # auth = HTTPBasicAuth()
 
@@ -861,3 +863,4 @@ def decode(encoded_str):
 
 if __name__ == '__main__':
     app.run(host="0.0.0.0",debug=False)
+
